@@ -1,0 +1,126 @@
+---
+title: "Canonical correlation"
+author: Bárbara Malcorra
+output:
+  html_document:
+    df_print: paged
+    highlight: tango
+    number_sections: no
+    theme: cerulean
+    toc: yes
+    toc_depth: 4
+    code_folding: show
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+  fontsize: 16pt
+  geometry: margin=1in
+  documentclass: article
+  editor_options: 
+    chunk_output_type: console
+---
+
+```{r, message = FALSE, warning = FALSE}
+library(tidyverse)
+```
+
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+theme_set(theme_bw() +
+          theme(legend.position = "bottom",
+                aspect.ratio = 1))
+
+options(scipen = 999)
+```
+
+
+```{r, echo = FALSE}
+setwd("C:/Users/barba/Desktop/graphs2_typical")
+
+dados = read.csv("Grafos_total.csv", header = T, sep = ";") %>% 
+  mutate(RWH = RH + WH,
+         Gender = case_when(Gender == "2" ~ "Female",
+                            Gender == "1" ~ "Male")) %>%
+  filter(Grupo == "Controle",
+         Sampling_size == "WC30",
+         Tarefa == "dog") %>% 
+  dplyr::select(Age, Educ, RWH, SES, MMSE, Gender, RE, LCC, LSC) %>% 
+  drop_na() %>% 
+  as_tibble()
+
+dados
+```
+
+
+# Canonical correlation
+
+```{r}
+# using the metan package
+
+library(metan)
+
+canon = dados %>% 
+  drop_na() %>% 
+  can_corr(.,
+           FG = c(RE, LCC, LSC),
+           SG = c(Age, Educ, RWH))
+  
+canon
+```
+
+
+```{r}
+# using the CCA package
+
+library(CCA)
+
+set1A = dados %>% 
+  dplyr::select(Age, Educ, RWH)
+
+set2A = dados %>% 
+  dplyr::select(RE, LCC, LSC)
+
+
+correlation = matcor(set1A, set2A)
+correlation
+
+cc1A = cc(set1A, set2A)
+
+cc1A$cor
+cc1A$cor^2 # squared canonical correlation equals the multiple regression R-squared
+
+
+# plots
+img.matcor(correlation, type = 3)
+
+plt.cc(cc1A, var.label = TRUE, type = "v")
+
+
+# significance test
+rho <- cc1A$cor
+n <- nrow(set1A)
+p <- ncol(set1A)
+q <- ncol(set2A)
+CCP::p.asym(rho, n, p, q, tstat = "Wilks")
+
+
+# canonical loadings
+S1 <- diag(sqrt(diag(cov(set1A))))
+S1 %*% cc1A$xcoef
+S2 <- diag(sqrt(diag(cov(set2A))))
+S2 %*% cc1A$ycoef
+
+
+# dimension 1 plot
+CC1_X <- as.matrix(set1A) %*% cc1A$xcoef[, 1]
+CC1_Y <- as.matrix(set2A) %*% cc1A$ycoef[, 1]
+
+dados %>%
+  mutate(CC1_X = CC1_X,
+         CC1_Y = CC1_Y) %>%
+  ggplot(aes(x = CC1_X, y = CC1_Y)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
