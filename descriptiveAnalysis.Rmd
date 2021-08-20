@@ -1,0 +1,85 @@
+---
+title: "Effect of education and reading and writing habits on linguistic features"
+output:
+  html_document:
+    df_print: paged
+    highlight: tango
+    number_sections: no
+    theme: cerulean
+    toc: yes
+    toc_depth: 4
+    code_folding: show
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+  fontsize: 16pt
+  geometry: margin=1in
+  documentclass: article
+  editor_options: 
+    chunk_output_type: console
+---
+
+```{r, message = FALSE, warning = FALSE}
+library(tidyverse)
+```
+
+
+```{r, include = FALSE}
+options(scipen = 999)
+
+theme_set(theme_bw() +
+            theme(legend.position = "top"))
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, results = TRUE)
+```
+
+
+```{r}
+setwd("C:/Users/barba/Desktop/Anderson/Saudaveis")
+
+dados = readxl::read_excel("BALE_Recall_Healthy.xlsx") %>% 
+  mutate(RWH = RH + WH,
+         Gender = case_when(Gender == "2" ~ "Female",
+                            Gender == "1" ~ "Male")) %>% 
+  as_tibble()
+
+dados
+```
+
+
+# Descriptive analysis
+
+```{r}
+table = dados %>%
+  pivot_longer(cols = c(Age, Educ, SES, RWH, MMSE),
+               names_to = "variable",
+               values_to = "value") %>%
+  group_by(variable) %>%
+  summarise("N" = n(),
+            "Mean" = mean(value, na.rm = TRUE),
+            "SD" = sd(value, na.rm = TRUE),
+            "Min" = min(value, na.rm = TRUE),
+            "Max" = max(value, na.rm = TRUE),
+            "Skewness" = e1071::skewness(value, na.rm = TRUE),
+            "kurtosis" = e1071::kurtosis(value, na.rm = TRUE))
+
+table
+
+dados %>% 
+  dplyr::select(Age, SES, Educ, Gender, Group, MMSE) %>% 
+  tableone::CreateTableOne(data = .,
+                           factorVars = 'Gender')
+```
+
+
+# Histograms
+
+```{r}
+dados %>%
+  pivot_longer(cols = sentences:abstract_nouns_ratio,
+               names_to = "variable",
+               values_to = "value") %>%
+  ggplot(aes(value)) +
+  geom_histogram() +
+  facet_wrap(~variable, scales = "free")
+```
