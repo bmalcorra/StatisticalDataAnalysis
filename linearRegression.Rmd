@@ -1,0 +1,83 @@
+---
+title: "Hierarchical multiple linear regression"
+output:
+  html_document:
+    df_print: paged
+    highlight: tango
+    number_sections: no
+    theme: cerulean
+    toc: yes
+    toc_depth: 4
+    code_folding: show
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+  fontsize: 16pt
+  geometry: margin=1in
+  documentclass: article
+  editor_options: 
+    chunk_output_type: console
+---
+
+```{r, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(lm.beta)
+library(car)
+library(lmSupport)
+```
+
+
+```{r, include = FALSE}
+options(scipen = 999)
+
+theme_set(theme_bw() +
+            theme(legend.position = "top"))
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, results = TRUE)
+```
+
+
+```{r}
+setwd("C:/Users/barba/Desktop/Anderson/Saudaveis")
+
+dados = readxl::read_excel("BALE_Recall_Healthy.xlsx") %>% 
+  mutate(RWH = RH + WH,
+         Gender = case_when(Gender == "2" ~ "Female",
+                            Gender == "1" ~ "Male")) %>% 
+  as_tibble()
+
+dados
+```
+
+
+# Hierarchical multiple linear regression
+
+```{r}
+sentences_model1 = lm(sentences ~ Age + SES, data = dados)
+summary(sentences_model1)
+lm.beta(sentences_model1)
+vif(sentences_model1)
+
+sentences_model2 = lm(sentences ~ Age + SES + Educ, data = dados)
+summary(sentences_model2)
+lm.beta(sentences_model2)
+vif(sentences_model2)
+
+modelCompare(sentences_model1,sentences_model2)
+
+
+sentences_model3 = lm(sentences ~ Age + SES + Educ + RWH, data = dados)
+summary(sentences_model3)
+lm.beta(sentences_model3)
+vif(sentences_model3)
+
+modelCompare(sentences_model2,sentences_model3)
+```
+
+
+```{r}
+dados %>% 
+  ggplot(aes(Educ, sentences)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
