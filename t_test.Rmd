@@ -1,0 +1,90 @@
+---
+title: "non-parametric t-test"
+output:
+  html_document:
+    df_print: paged
+    highlight: tango
+    number_sections: no
+    theme: cerulean
+    toc: yes
+    toc_depth: 4
+    code_folding: show
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+  fontsize: 16pt
+  geometry: margin=1in
+  documentclass: article
+  editor_options: 
+    chunk_output_type: console
+---
+
+```{r, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(ggpubr)
+library(groupedstats)
+```
+
+
+```{r, include = FALSE}
+theme_set(theme_bw() +
+            theme(legend.position = "top",
+                  aspect.ratio = 1))
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE)
+```
+
+
+```{r, echo = FALSE}
+setwd("C:/Users/barba/Desktop/Anderson")
+
+dados <- read.csv("recall_matched.csv", header = T, sep = ";") %>% 
+  mutate_if(is.integer, as.numeric) %>% 
+  as_tibble()
+
+dados %>% 
+  dplyr::select(Age, SES, Educ, Gender, Grupo, MMSE, MEImmediate, MEFree, MECued, MELate, DSF, DSB, Naming) %>% 
+  tableone::CreateTableOne(data = .,
+                           factorVars = 'Gender',
+                           strata = 'Grupo')
+```
+
+
+# Test-t nonparametric {.tabset .tabset-fade .tabset-pills}
+
+
+```{r}
+sintatic <- dados %>% 
+  grouped_wilcox(data = .,
+                 dep.vars = c(sentences,words_per_sentence,clauses_per_sentence,yngve,frazier,subordinate_clauses,dep_distance),
+                 indep.vars = Grupo,
+                 grouping.vars = NULL) %>% 
+  arrange(p.value) %>% 
+  filter(p.value < 0.0071) # correction for 7 variables
+
+sintatic
+
+sintatic_padj = sintatic %>% 
+  mutate(p_adjusted = p.adjust(p.value, method = "bonferroni")) %>% 
+  select(-method) %>% 
+  arrange(p.value)
+
+sintatic_padj
+```
+
+
+```{r}
+library(viridis)
+
+dados %>% 
+  pivot_longer(cols = c(sentences,words_per_sentence,clauses_per_sentence,yngve,frazier,subordinate_clauses,dep_distance),
+               names_to = "variable",
+               values_to = "value") %>% 
+  ggplot(aes(Grupo, value, fill = Grupo)) +
+  geom_boxplot(show.legend = FALSE) +
+  facet_wrap(~variable, scales = "free") +
+  stat_summary(color = "red",
+               show.legend = FALSE) + 
+  scale_fill_viridis(discrete = TRUE) +
+  ggpubr::stat_compare_means(method = "wilcox")
+```
